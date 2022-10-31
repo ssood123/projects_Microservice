@@ -15,7 +15,7 @@ app.get('/project/:name', async (req, res) => {
 	res.send(project)
 })
 
-app.post('projects', async (req, res) => {
+app.post('/projects', async (req, res) => {
 	const {name, description, members, link} = req.body
 	const result = await createAProject(name, description, members, link)
 	res.status(201).send(result)

@@ -10,18 +10,20 @@ const pool = mysql.createPool({
 	database: process.env.MYSQL_DATABASE
 }).promise()
 
-export const getAllProjects = async () => {
-	const result = await pool.query('SELECT * FROM projects')
-	return result[0]
-}
+export default pool
 
-export const getAProject = async (name) => {
-	const result = await pool.query(`SELECT * FROM projects where name = ?`,[name])
-	return result[0][0]
-}
+// export const getAllProjects = async () => {
+// 	const result = await pool.query('SELECT * FROM projects')
+// 	return result[0]
+// }
 
-export const createAProject = async(name, description, members, link) => {
-	const result = await pool.query(`INSERT INTO projects VALUES (?,?,?,?)`, [name, description, members, link]) 
-	return result
-}
+// export const getAProject = async (name) => {
+// 	const result = await pool.query(`SELECT * FROM projects where name = ?`,[name])
+// 	return result[0][0]
+// }
+
+// export const createAProject = async(name, description, members, link) => {
+// 	const result = await pool.query(`INSERT INTO projects VALUES (?,?,?,?)`, [name, description, members, link]) 
+// 	return result
+// }
 

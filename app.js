@@ -1,6 +1,8 @@
 import express from 'express'
 import pool from './database.js'
 import bodyParser from 'body-parser'
+import dotenv from 'dotenv'
+dotenv.config()
 const app = express()
 app.use(express.json())
 app.use(bodyParser.urlencoded({
@@ -9,28 +11,49 @@ app.use(bodyParser.urlencoded({
 
 const databaseTableName = process.env.MYSQL_DATABASE_TABLE_NAME
 const errorCheckingForAddUpdate = async (name, description, members, link) => {
+	if (name === '') {
+		return "project name can't be empty"
+	}
+	if (description === '') {
+		return "project description can't be empty"
+	}
+	if (members === '') {
+		return "project must have at least one member"
+	}
+	if (link === '') {
+		return "project link can't be empty"
+	}
 	const memberNames = members.split(', ')
-	console.log(memberNames)
-	const projects = await pool.query(`SELECT * FROM ${databaseTableName}`)
-	const listOfProjects = projects[0]
-	let errorMessage = ''
-	listOfProjects.forEach((project) => {
-		if (project.name === name) {
-			errorMessage = "project name already exists"
-		}
-		if (project.description === description) {
-			errorMessage = "project description already exists"	
-		}
-		if (project.link === link) {
-			errorMessage = "project link alaready exists"		
-		}
-		for (let i = 0; i < memberNames.length; i++) {
-			if (project.members.toLowerCase().includes(memberNames[i].toLowerCase())) {
-				errorMessage = "At least one member is already in another group"
+	const listOfNames = []
+	for (let i = 0; i < memberNames.length -1; i++) {
+		for (let j = i + 1; j < memberNames.length; j++) {
+			if (memberNames[i].toLowerCase() === memberNames[j].toLowerCase()) {
+				return "Duplicate members aren't allowed"
 			}
 		}
-	})	
-	return errorMessage
+	}
+	const projects = await pool.query(`SELECT * FROM ${databaseTableName}`)
+	const listOfProjects = projects[0]
+	for (const project of listOfProjects) {
+		if (project.name === name) {
+			return "project name already exists"
+		}
+		if (project.description === description) {
+			return "project description already exists"	
+		}
+		if (project.link === link) {
+			return "project link alaready exists"	
+		}
+		const memberNames2 = project.members.split(', ')
+		for (const member of memberNames) {
+			for (const member2 of memberNames2) {
+				if (member.toLowerCase() === member2.toLowerCase()) {
+					return "At least one member is already in another group"
+				}
+			}
+		}
+	}
+	return ''
 } 
 
 app.post('/seed', async(req, res) => {
@@ -45,13 +68,13 @@ app.post('/seed', async(req, res) => {
 
 app.get('/projects', async (req, res) => {
 	const projects = await pool.query(`SELECT * FROM ${databaseTableName}`)
-	res.json(projects[0])
+	res.status(201).json(projects[0])
 })
 
 app.get('/projects/:name', async (req, res) => {
-	const project = await pool.query(`SELECT * FROM projects where name = ?`,[req.params.name])
+	const project = await pool.query(`SELECT * FROM ${databaseTableName} where name = ?`,[req.params.name])
 	if (project[0][0]) {
-		res.json(project[0][0])
+		res.status(201).json(project[0][0])
 	} else {
 		res.status(404).json({status: "error", message: "project does not exist"})
 	}
@@ -59,8 +82,9 @@ app.get('/projects/:name', async (req, res) => {
 
 app.post('/projects', async (req, res) => {
 	const {name, description, members, link} = req.body
-	const errorMessage = errorCheckingForAddUpdate(name, description, members, link)
+	const errorMessage = await errorCheckingForAddUpdate(name, description, members, link)
 	if (errorMessage === '') {
+		await pool.query(`INSERT INTO ${databaseTableName} (name, description, members, link) VALUES (?, ?, ?, ?)`, [name, description, members, link])
 		res.status(201).json({status: "success", message: "successfully added new project"})
 	} else {
 		res.status(401).json({status: "error", message: errorMessage})		
@@ -70,21 +94,27 @@ app.post('/projects', async (req, res) => {
 
 app.put('/projects/:name', async (req, res) => {
 	const {name, description, members, link} = req.body
-	const errorMessage = errorCheckingForAddUpdate(name, description, members, link)
-	if (errorMessage === '') {
-		res.status(201).json({status: "success", message: "successfully updated new project"})
+	const project = await pool.query(`SELECT * FROM ${databaseTableName} where name = ?`,[req.params.name])
+	if (project[0][0]) {
+		const errorMessage = await errorCheckingForAddUpdate(name, description, members, link)
+		if (errorMessage === '') {
+			await pool.query(`UPDATE ${databaseTableName} SET name = ?, description = ?, members = ?, link = ? WHERE projectID = ${project[0][0].projectID}`, [name, description, members, link]);
+			res.status(201).json({status: "success", message: "successfully updated existing project"})
+		} else {
+			res.status(401).json({status: "error", message: errorMessage})		
+		}
 	} else {
-		res.status(401).json({status: "error", message: errorMessage})		
+		res.status(404).json({status: "error", message: "project does not exist"})
 	}
 })
 
 app.delete('/projects/:name', async (req, res) => {
-	const {name, description, members, link} = req.body
-	const errorMessage = errorCheckingForAddUpdate(name, description, members, link)
-	if (errorMessage === '') {
-		res.status(201).json({status: "success", message: "successfully updated new project"})
+	const project = await pool.query(`SELECT * FROM ${databaseTableName} where name = ?`,[req.params.name])
+	if (project[0][0]) {
+		await pool.query(`DELETE FROM ${databaseTableName} WHERE name = ?`, [req.params.name])
+		res.status(201).json({status: "success", message: "successfully deleted project"})
 	} else {
-		res.status(401).json({status: "error", message: errorMessage})		
+		res.status(404).json({status: "error", message: "project does not exist"})
 	}
 })
 

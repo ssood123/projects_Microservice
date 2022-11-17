@@ -10,7 +10,7 @@ app.use(bodyParser.urlencoded({
 }))
 
 const databaseTableName = process.env.MYSQL_DATABASE_TABLE_NAME
-const errorCheckingForAddUpdate = async (name, description, members, link) => {
+const errorCheckingForAddUpdate = async (name, description, members, link, updateFlag=false, currentName='', currentDescription='', currentMembers='', currentLink='') => {
 	if (name === '') {
 		return "project name can't be empty"
 	}
@@ -35,6 +35,9 @@ const errorCheckingForAddUpdate = async (name, description, members, link) => {
 	const projects = await pool.query(`SELECT * FROM ${databaseTableName}`)
 	const listOfProjects = projects[0]
 	for (const project of listOfProjects) {
+		if (updateFlag === true && (project.name === currentName || project.description === currentDescription || project.members === currentMembers || project.link === currentLink)) {
+			continue;
+		}
 		if (project.name === name) {
 			return "project name already exists"
 		}
@@ -63,7 +66,7 @@ app.post('/seed', async(req, res) => {
 	await pool.query(`INSERT INTO ${databaseTableName} (name, description, members, link) VALUES ('project3', 'this is the third project', 'Korey Weeks, Annaliese Schneider', 'project3.com')`)
 	await pool.query(`INSERT INTO ${databaseTableName} (name, description, members, link) VALUES ('project4', 'this is the fourth project', 'Ebonie Gallagher', 'project4.com')`)
 	await pool.query(`INSERT INTO ${databaseTableName} (name, description, members, link) VALUES ('project5', 'this is the fifth project', 'Mallory Park, Inaya Gates, Sam Hobbs, Jordi Wickens, Azaan Terrell, Zain Ortiz', 'project5.com')`)
-	res.status(201).send('seeded database with initial values')
+	res.status(201).json({status: "success", message: "seeded database with initial values"})
 })
 
 app.get('/projects', async (req, res) => {
@@ -96,7 +99,7 @@ app.put('/projects/:name', async (req, res) => {
 	const {name, description, members, link} = req.body
 	const project = await pool.query(`SELECT * FROM ${databaseTableName} where name = ?`,[req.params.name])
 	if (project[0][0]) {
-		const errorMessage = await errorCheckingForAddUpdate(name, description, members, link)
+		const errorMessage = await errorCheckingForAddUpdate(name, description, members, link, true, project[0][0].name, project[0][0].description, project[0][0].members, project[0][0].link)
 		if (errorMessage === '') {
 			await pool.query(`UPDATE ${databaseTableName} SET name = ?, description = ?, members = ?, link = ? WHERE projectID = ${project[0][0].projectID}`, [name, description, members, link]);
 			res.status(201).json({status: "success", message: "successfully updated existing project"})
@@ -123,6 +126,7 @@ app.use((err, req, res, next) => {
 	res.status(500).send('Something broke!')
 })
 
-app.listen(8080, () => {
+const PORT = process.env.PORT || 8080
+app.listen(PORT, () => {
 	console.log('server is running on port 8080 ')
 })

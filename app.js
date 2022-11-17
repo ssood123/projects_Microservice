@@ -68,6 +68,9 @@ app.post('/seed', async(req, res) => {
 	await pool.query(`INSERT INTO ${databaseTableName} (name, description, members, link) VALUES ('project5', 'this is the fifth project', 'Mallory Park, Inaya Gates, Sam Hobbs, Jordi Wickens, Azaan Terrell, Zain Ortiz', 'project5.com')`)
 	res.status(201).json({status: "success", message: "seeded database with initial values"})
 })
+app.get('/test', async (req, res) => {
+	res.status(201).json({status: "success", message: "You have successfully connected"})
+})
 
 app.get('/projects', async (req, res) => {
 	const projects = await pool.query(`SELECT * FROM ${databaseTableName}`)
@@ -128,5 +131,5 @@ app.use((err, req, res, next) => {
 
 const PORT = process.env.PORT || 8080
 app.listen(PORT, () => {
-	console.log('server is running on port 8080 ')
+	console.log(`server is running on port ${PORT}`)
 })

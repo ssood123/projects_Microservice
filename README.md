@@ -12,5 +12,5 @@ Insert a new project
 PUT /projects/{name}
 Update a single project by its name
 
-DELETE /project/{name}
+DELETE /projects/{name}
 Delete a single project by its name

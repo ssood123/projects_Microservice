@@ -59,7 +59,7 @@ const errorCheckingForAddUpdate = async (name, description, members, link, updat
 	return ''
 } 
 
-app.post('/seed', async(req, res) => {
+app.get('/seed', async(req, res) => {
 	await pool.query(`DELETE FROM ${databaseTableName}`)
 	await pool.query(`INSERT INTO ${databaseTableName} (projectID, name, description, members, link) VALUES (0, 'project1', 'this is the first project', 'Ariyah Molloy, Kira Sanders, Amit Ramsay', 'project1.com')`)
 	await pool.query(`INSERT INTO ${databaseTableName} (name, description, members, link) VALUES ('project2', 'this is the second project', 'Brianna Carrillo, Mimi Power, Letitia Macleod, Ronald Villalobos', 'project2.com')`)

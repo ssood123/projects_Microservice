@@ -1,6 +1,6 @@
 # projects_Microservice
 
-GET/projects
+GET /projects
 Get a list of all projects
 
 GET /projects/{name}

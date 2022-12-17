@@ -2,12 +2,19 @@ import express from 'express'
 import pool from './database.js'
 import bodyParser from 'body-parser'
 import dotenv from 'dotenv'
+import cors from 'cors'
 dotenv.config()
 const app = express()
 app.use(express.json())
 app.use(bodyParser.urlencoded({
 	extended: true
 }))
+app.use(
+	cors({
+		origin: "*",
+		credentials: true
+	})
+)
 
 const databaseTableName = process.env.MYSQL_DATABASE_TABLE_NAME
 

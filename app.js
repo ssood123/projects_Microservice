@@ -3,6 +3,7 @@ import pool from './database.js'
 import bodyParser from 'body-parser'
 import dotenv from 'dotenv'
 import cors from 'cors'
+import axios from 'axios'
 dotenv.config()
 const app = express()
 app.use(express.json())
@@ -17,6 +18,25 @@ app.use(
 )
 
 const databaseTableName = process.env.MYSQL_DATABASE_TABLE_NAME
+
+const baseURL = 'https://safebrowsing.googleapis.com/v4/threatMatches:find?key=' + process.env.SAFE_BROWSING_LOOKUP_API_KEY
+const requestBody = 
+  {
+    "client": {
+      "clientId":      "matching",
+      "clientVersion": "1.5.2"
+    },
+    "threatInfo": {
+      "threatTypes":      ["MALWARE", "SOCIAL_ENGINEERING"],
+      "platformTypes":    ["WINDOWS", "LINUX"],
+      "threatEntryTypes": ["URL"],
+      "threatEntries": [
+        {"url": ""}
+      ]
+    }
+  }
+
+
 
 app.get('/seed', async(req, res) => {
 	await pool.query(`DELETE FROM ${databaseTableName}`)
@@ -43,6 +63,12 @@ app.get('/projects', async (req, res) => {
 
 app.post('/projects', async (req, res) => {
 	const {name, description, unis, link} = req.body
+	requestBody.threatInfo.threatEntries[0].url = link
+	let safeStatus = await axios.post(baseURL,requestBody)
+	if (JSON.stringify(safeStatus.data) !== '{}') {
+		res.status(404).json({status: "error", message: "Unsafe project link"})
+		return		
+	}
 	await pool.query(`INSERT INTO ${databaseTableName} (name, description, members, link) VALUES (?, ?, ?, ?)`, [name, description, unis, link])
 	res.status(201).json({status: "success", message: "successfully added new project"})	
 })
@@ -58,6 +84,12 @@ app.get('/projects/:name', async (req, res) => {
 
 app.put('/projects/:name', async (req, res) => {
 	const {name, description, unis, link} = req.body
+	requestBody.threatInfo.threatEntries[0].url = link
+	let safeStatus = await axios.post(baseURL,requestBody)
+	if (JSON.stringify(safeStatus.data) !== '{}') {
+		res.status(404).json({status: "error", message: "Unsafe project link"})
+		return		
+	}
 	const project = await pool.query(`SELECT * FROM ${databaseTableName} where name = ?`,[req.params.name])
 	if (project[0][0]) {
 		await pool.query(`UPDATE ${databaseTableName} SET name = ?, description = ?, members = ?, link = ? WHERE projectID = ${project[0][0].projectID}`, [name, description, unis, link]);
@@ -94,6 +126,12 @@ app.get('/projects/members/:uni', async (req, res) => {
 
 app.put('/projects/members/:uni', async (req, res) => {
 	const {name, description, unis, link} = req.body
+	requestBody.threatInfo.threatEntries[0].url = link
+	let safeStatus = await axios.post(baseURL,requestBody)
+	if (JSON.stringify(safeStatus.data) !== '{}') {
+		res.status(404).json({status: "error", message: "Unsafe project link"})
+		return		
+	}
 	const uni = req.params.uni
 	const projects = await pool.query(`SELECT * FROM ${databaseTableName}`)
 	for (let i = 0; i < projects[0].length; i++) {
@@ -140,6 +178,12 @@ app.get('/projects/link/:link', async (req, res) => {
 
 app.put('/projects/link/:link', async (req, res) => {
 	const {name, description, unis, link} = req.body
+	requestBody.threatInfo.threatEntries[0].url = link
+	let safeStatus = await axios.post(baseURL,requestBody)
+	if (JSON.stringify(safeStatus.data) !== '{}') {
+		res.status(404).json({status: "error", message: "Unsafe project link"})
+		return		
+	}
 	const projectLink = req.params.link
 	const projects = await pool.query(`SELECT * FROM ${databaseTableName}`)
 	for (let i = 0; i < projects[0].length; i++) {

@@ -32,3 +32,6 @@ Update the project containing the specified link
 
 #### DELETE /projects/link/{link}:
 Delete the project containing the specified link
+
+#### GET /projects/id/{id}:
+Get a single project (along with the details) by its projectID

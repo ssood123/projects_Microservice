@@ -210,6 +210,15 @@ app.delete('/projects/link/:link', async (req, res) => {
 	res.status(404).json({status: "error", message: "project containing the link does not exist"})	
 })
 
+app.get('/projects/id/:id', async (req, res) => {
+	const project = await pool.query(`SELECT * FROM ${databaseTableName} where projectID = ?`,[req.params.id])
+	if (project[0][0]) {
+		res.status(201).json(project[0][0])
+	} else {
+		res.status(404).json({status: "error", message: "project with given id does not exist"})
+	}	
+})
+
 
 app.use((err, req, res, next) => {
 	console.error(err.stack)

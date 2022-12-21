@@ -60,7 +60,10 @@ app.get('/projects', async (req, res) => {
 	let sendResponse = {}
 	sendResponse['statusCode'] = 200
 	sendResponse['data'] = filteredProjects
-	sendResponse['links'] = []
+	let HATEOASlinks = []
+	HATEOASlinks.push({"href" : "/projects", "rel": "self", "type": "GET"})
+	HATEOASlinks.push({"href" : "/projects", "rel": "self", "type": "POST"})
+	sendResponse['links'] = HATEOASlinks
 	res.status(200).json(sendResponse)
 })
 
@@ -88,7 +91,11 @@ app.get('/projects/:name', async (req, res) => {
 		let sendResponse = {}
 		sendResponse['statusCode'] = 200
 		sendResponse['data'] = project[0][0].description
-		sendResponse['links'] = []
+		let HATEOASlinks = []
+		HATEOASlinks.push({"href": `/projects/${req.params.name}`, "rel" : "self", "type": "GET"})
+		HATEOASlinks.push({"href": `/projects/${req.params.name}/members`, "rel" : "members", "type" : "GET"})
+		HATEOASlinks.push({"href": `/projects/${req.params.name}/link`, "rel" : "link", "type" : "GET"})
+		sendResponse['links'] = HATEOASlinks
 		res.status(200).json(sendResponse)
 	}	else {
 		let sendResponse = {}
@@ -137,7 +144,11 @@ app.get('/projects/:name/members', async (req, res) => {
 		let sendResponse = {}
 		sendResponse['statusCode'] = 200
 		sendResponse['data'] = project[0][0].members
-		sendResponse['links'] = []
+		let HATEOASlinks = []
+		HATEOASlinks.push({"href": `/projects/${req.params.name}/members`, "rel" : "self", "type" : "GET"})
+		HATEOASlinks.push({"href": `/projects/${req.params.name}`, "rel" : "description", "type": "GET"})
+		HATEOASlinks.push({"href": `/projects/${req.params.name}/link`, "rel" : "link", "type" : "GET"})
+		sendResponse['links'] = HATEOASlinks
 		res.status(200).json(sendResponse)
 	}	else {
 		let sendResponse = {}
@@ -203,7 +214,11 @@ app.get('/projects/:name/link', async (req, res) => {
 		let sendResponse = {}
 		sendResponse['statusCode'] = 200
 		sendResponse['data'] = project[0][0].link
-		sendResponse['links'] = []
+		let HATEOASlinks = []
+		HATEOASlinks.push({"href": `/projects/${req.params.name}/link`, "rel" : "self", "type" : "GET"})
+		HATEOASlinks.push({"href": `/projects/${req.params.name}/members`, "rel" : "members", "type" : "GET"})
+		HATEOASlinks.push({"href": `/projects/${req.params.name}`, "rel" : "description", "type": "GET"})
+		sendResponse['links'] = HATEOASlinks
 		res.status(200).json(sendResponse)
 	}	else {
 		let sendResponse = {}
@@ -252,6 +267,24 @@ app.delete('/projects/:name/link', async (req, res) => {
 		sendResponse['statusCode'] = 400
 		sendResponse['message'] = "project with given name does not exist"
 		res.status(200).json(sendResponse)			
+	}
+})
+
+app.get('/projects/:id/id', async (req, res) => {
+	const project = await pool.query(`SELECT * FROM ${databaseTableName} where projectID = ?`,[req.params.id])
+	if (project[0][0]) {
+		let sendResponse = {}
+		sendResponse['statusCode'] = 200
+		sendResponse['data'] = project[0][0]
+		let HATEOASlinks = []
+		HATEOASlinks.push({"href": `/projects/${req.params.id}/id`, "rel" : "self", "type" : "GET"})
+		sendResponse['links'] = HATEOASlinks
+		res.status(200).json(sendResponse)
+	}	else {
+		let sendResponse = {}
+		sendResponse['statusCode'] = 400
+		sendResponse['message'] = "project with given id does not exist"
+		res.status(400).json(sendResponse)
 	}
 })
 

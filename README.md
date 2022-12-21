@@ -35,3 +35,11 @@ Delete the link of a project with a given name
 
 #### GET /projects/{id}/id
 Get the details of a project by specifying its projectID
+
+# Example of request body:
+{
+    "name": "project9",
+    "description": "this is project 9",
+    "unis": "aafe1234, bbcd1234, cc1234",
+    "link": "project9.com"
+}

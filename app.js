@@ -37,7 +37,6 @@ const requestBody =
   }
 
 
-
 app.get('/seed', async(req, res) => {
 	await pool.query(`DELETE FROM ${databaseTableName}`)
 	await pool.query(`INSERT INTO ${databaseTableName} (projectID, name, description, members, link) VALUES (0, 'project1', 'this is the first project', 'ab1234, bc1234, cd1234', 'project1.com')`)
@@ -58,7 +57,11 @@ app.get('/projects', async (req, res) => {
 	for (let i = 0; i < projects[0].length; i++) {
 		filteredProjects.push(projects[0][i].name)
 	}
-	res.status(201).json(filteredProjects)
+	let sendResponse = {}
+	sendResponse['statusCode'] = 200
+	sendResponse['data'] = filteredProjects
+	sendResponse['links'] = []
+	res.status(200).json(sendResponse)
 })
 
 app.post('/projects', async (req, res) => {
@@ -66,157 +69,190 @@ app.post('/projects', async (req, res) => {
 	requestBody.threatInfo.threatEntries[0].url = link
 	let safeStatus = await axios.post(baseURL,requestBody)
 	if (JSON.stringify(safeStatus.data) !== '{}') {
-		res.status(404).json({status: "error", message: "Unsafe project link"})
+		let sendResponse = {}
+		sendResponse['statusCode'] = 400
+		sendResponse['message'] = 'unsafe project link'
+		res.status(400).json(sendResponse)
 		return		
 	}
 	await pool.query(`INSERT INTO ${databaseTableName} (name, description, members, link) VALUES (?, ?, ?, ?)`, [name, description, unis, link])
-	res.status(201).json({status: "success", message: "successfully added new project"})	
+	let sendResponse = {}
+	sendResponse['statusCode'] = 201
+	sendResponse['message'] = "successfully created new project"
+	res.status(201).json(sendResponse)	
 })
 
 app.get('/projects/:name', async (req, res) => {
 	const project = await pool.query(`SELECT * FROM ${databaseTableName} where name = ?`,[req.params.name])
 	if (project[0][0]) {
-		res.status(201).json(project[0][0])
-	} else {
-		res.status(404).json({status: "error", message: "project with given name does not exist"})
+		let sendResponse = {}
+		sendResponse['statusCode'] = 200
+		sendResponse['data'] = project[0][0].description
+		sendResponse['links'] = []
+		res.status(200).json(sendResponse)
+	}	else {
+		let sendResponse = {}
+		sendResponse['statusCode'] = 400
+		sendResponse['message'] = "project with given name does not exist"
+		res.status(400).json(sendResponse)
 	}
 })
 
 app.put('/projects/:name', async (req, res) => {
-	const {name, description, unis, link} = req.body
-	requestBody.threatInfo.threatEntries[0].url = link
-	let safeStatus = await axios.post(baseURL,requestBody)
-	if (JSON.stringify(safeStatus.data) !== '{}') {
-		res.status(404).json({status: "error", message: "Unsafe project link"})
-		return		
-	}
-	const project = await pool.query(`SELECT * FROM ${databaseTableName} where name = ?`,[req.params.name])
+	const { name, description } = req.body
+	const project = await pool.query(`SELECT * FROM ${databaseTableName} where name = ?`,[req.params.name])	
 	if (project[0][0]) {
-		await pool.query(`UPDATE ${databaseTableName} SET name = ?, description = ?, members = ?, link = ? WHERE projectID = ${project[0][0].projectID}`, [name, description, unis, link]);
-		res.status(201).json({status: "success", message: "successfully updated existing project"})	
+		await pool.query(`UPDATE ${databaseTableName} SET name = ?, description = ? WHERE projectID = ${project[0][0].projectID}`, [name, description]);
+		let sendResponse = {}
+		sendResponse['statusCode'] = 200
+		sendResponse['message'] = 'successfully updated existing project name and description'
+		res.status(200).json(sendResponse)		
 	} else {
-		res.status(404).json({status: "error", message: "project with given name does not exist"})
+		let sendResponse = {}
+		sendResponse['statusCode'] = 400
+		sendResponse['message'] = "project with given name does not exist"
+		res.status(400).json(sendResponse)
 	}
 })
 
 app.delete('/projects/:name', async (req, res) => {
-	const project = await pool.query(`SELECT * FROM ${databaseTableName} where name = ?`,[req.params.name])
+	const project = await pool.query(`SELECT * FROM ${databaseTableName} where name = ?`,[req.params.name])	
 	if (project[0][0]) {
 		await pool.query(`DELETE FROM ${databaseTableName} WHERE name = ?`, [req.params.name])
-		res.status(201).json({status: "success", message: "successfully deleted project"})
+		let sendResponse = {}
+		sendResponse['statusCode'] = 200
+		sendResponse['message'] = "successfully deleted project"
+		res.status(200).json(sendResponse)
 	} else {
-		res.status(404).json({status: "error", message: "project with given name does not exist"})
+		let sendResponse = {}
+		sendResponse['statusCode'] = 400
+		sendResponse['message'] = "project with given name does not exist"
+		res.status(404).json(sendResponse)
 	}
 })
 
-app.get('/projects/members/:uni', async (req, res) => {
-	const uni = req.params.uni
-	const projects = await pool.query(`SELECT * FROM ${databaseTableName}`)
-	for (let i = 0; i < projects[0].length; i++) {
-		let members = projects[0][i].members.split(', ')
-		for (let j = 0; j < members.length; j++) {
-			if (members[j] === uni) {
-				res.status(201).json(projects[0][i])
-				return;
-			}			
-		}
-	}
-	res.status(404).json({status: "error", message: "project containing the member does not exist"})
-})
-
-app.put('/projects/members/:uni', async (req, res) => {
-	const {name, description, unis, link} = req.body
-	requestBody.threatInfo.threatEntries[0].url = link
-	let safeStatus = await axios.post(baseURL,requestBody)
-	if (JSON.stringify(safeStatus.data) !== '{}') {
-		res.status(404).json({status: "error", message: "Unsafe project link"})
-		return		
-	}
-	const uni = req.params.uni
-	const projects = await pool.query(`SELECT * FROM ${databaseTableName}`)
-	for (let i = 0; i < projects[0].length; i++) {
-		let members = projects[0][i].members.split(', ')
-		for (let j = 0; j < members.length; j++) {
-			if (members[j] === uni) {
-				await pool.query(`UPDATE ${databaseTableName} SET name = ?, description = ?, members = ?, link = ? WHERE projectID = ${projects[0][i].projectID}`, [name, description, unis, link]);
-				res.status(201).json({status: "success", message: "successfully updated existing project"})	
-				return;
-			}			
-		}
-	}
-	res.status(404).json({status: "error", message: "project containing the member does not exist"})
-})
-
-app.delete('/projects/members/:uni', async (req, res) => {
-	const {name, description, unis, link} = req.body
-	const uni = req.params.uni
-	const projects = await pool.query(`SELECT * FROM ${databaseTableName}`)
-	for (let i = 0; i < projects[0].length; i++) {
-		let members = projects[0][i].members.split(', ')
-		for (let j = 0; j < members.length; j++) {
-			if (members[j] === uni) {
-				await pool.query(`DELETE FROM ${databaseTableName} WHERE projectID = ?`, [projects[0][i].projectID])
-				res.status(201).json({status: "success", message: "successfully deleted project"})
-				return;
-			}			
-		}
-	}
-	res.status(404).json({status: "error", message: "project containing the member does not exist"})
-})
-
-app.get('/projects/link/:link', async (req, res) => {
-	const link = req.params.link
-	const projects = await pool.query(`SELECT * FROM ${databaseTableName}`)
-	for (let i = 0; i < projects[0].length; i++) {
-		if (projects[0][i].link === link) {
-			res.status(201).json(projects[0][i])
-			return;
-		}			
-	}
-	res.status(404).json({status: "error", message: "project containing the link does not exist"})	
-})
-
-app.put('/projects/link/:link', async (req, res) => {
-	const {name, description, unis, link} = req.body
-	requestBody.threatInfo.threatEntries[0].url = link
-	let safeStatus = await axios.post(baseURL,requestBody)
-	if (JSON.stringify(safeStatus.data) !== '{}') {
-		res.status(404).json({status: "error", message: "Unsafe project link"})
-		return		
-	}
-	const projectLink = req.params.link
-	const projects = await pool.query(`SELECT * FROM ${databaseTableName}`)
-	for (let i = 0; i < projects[0].length; i++) {
-		if (projects[0][i].link === projectLink) {
-			await pool.query(`UPDATE ${databaseTableName} SET name = ?, description = ?, members = ?, link = ? WHERE projectID = ${projects[0][i].projectID}`, [name, description, unis, link]);
-			res.status(201).json({status: "success", message: "successfully updated existing project"})	
-			return;
-		}			
-	}
-	res.status(404).json({status: "error", message: "project containing the link does not exist"})	
-})
-
-app.delete('/projects/link/:link', async (req, res) => {
-	const {name, description, unis, link} = req.body
-	const projectLink = req.params.link
-	const projects = await pool.query(`SELECT * FROM ${databaseTableName}`)
-	for (let i = 0; i < projects[0].length; i++) {
-		if (projects[0][i].link === projectLink) {
-			await pool.query(`DELETE FROM ${databaseTableName} WHERE projectID = ?`, [projects[0][i].projectID])
-			res.status(201).json({status: "success", message: "successfully deleted project"})
-			return;
-		}			
-	}
-	res.status(404).json({status: "error", message: "project containing the link does not exist"})	
-})
-
-app.get('/projects/id/:id', async (req, res) => {
-	const project = await pool.query(`SELECT * FROM ${databaseTableName} where projectID = ?`,[req.params.id])
+app.get('/projects/:name/members', async (req, res) => {
+	const project = await pool.query(`SELECT * FROM ${databaseTableName} where name = ?`,[req.params.name])
 	if (project[0][0]) {
-		res.status(201).json(project[0][0])
+		let sendResponse = {}
+		sendResponse['statusCode'] = 200
+		sendResponse['data'] = project[0][0].members
+		sendResponse['links'] = []
+		res.status(200).json(sendResponse)
+	}	else {
+		let sendResponse = {}
+		sendResponse['statusCode'] = 400
+		sendResponse['message'] = "project with given name does not exist"
+		res.status(400).json(sendResponse)
+	}
+})
+
+app.put('/projects/:name/members', async (req, res) => {
+	const { unis } = req.body
+	const project = await pool.query(`SELECT * FROM ${databaseTableName} where name = ?`,[req.params.name])	
+	if (project[0][0]) {
+		await pool.query(`UPDATE ${databaseTableName} SET members = ? WHERE projectID = ${project[0][0].projectID}`, [unis]);
+		let sendResponse = {}
+		sendResponse['statusCode'] = 200
+		sendResponse['message'] = "successfully updated existing project members"
+		res.status(200).json(sendResponse)		
 	} else {
-		res.status(404).json({status: "error", message: "project with given id does not exist"})
+		let sendResponse = {}
+		sendResponse['statusCode'] = 400
+		sendResponse['message'] = "project with given name does not exist"
+		res.status(400).json(sendResponse)
+	}
+})
+
+
+app.delete('/projects/:name/members/:uni', async (req, res) => {
+	const uni = req.params.uni
+	const project = await pool.query(`SELECT * FROM ${databaseTableName} where name = ?`,[req.params.name])
+	if (project[0][0]) {
+		let tempMembers = project[0][0].members
+		if (tempMembers.includes(uni)) {
+			let tempMembers2 = tempMembers.split(', ')
+			let tempMembers3 = tempMembers2.filter((e) => {
+				return e !== uni
+			})
+			let tempMembers4 = tempMembers3.join(', ')
+			await pool.query(`UPDATE ${databaseTableName} SET members = ? WHERE projectID = ${project[0][0].projectID}`, [tempMembers4]);		
+			let sendResponse = {}
+			sendResponse['statusCode'] = 200
+			sendResponse['message'] = "successfully deleted member from project with given name"
+			res.status(200).json(sendResponse)
+			return
+		} else {
+			let sendResponse = {}
+			sendResponse['statusCode'] = 400
+			sendResponse['message'] = "the project with given name's members list doesn't contain specified member"
+			res.status(400).json(sendResponse)
+			return
+		}
+	} else {
+		let sendResponse = {}
+		sendResponse['statusCode'] = 400
+		sendResponse['message'] = "project with given name does not exist"
+		res.status(400).json(sendResponse)
+	}		
+})
+
+app.get('/projects/:name/link', async (req, res) => {
+	const project = await pool.query(`SELECT * FROM ${databaseTableName} where name = ?`,[req.params.name])
+	if (project[0][0]) {
+		let sendResponse = {}
+		sendResponse['statusCode'] = 200
+		sendResponse['data'] = project[0][0].link
+		sendResponse['links'] = []
+		res.status(200).json(sendResponse)
+	}	else {
+		let sendResponse = {}
+		sendResponse['statusCode'] = 400
+		sendResponse['message'] = "project with given name does not exist"
+		res.status(400).json(sendResponse)
 	}	
+})
+
+app.put('/projects/:name/link', async (req, res) => {
+	const { link } = req.body
+	requestBody.threatInfo.threatEntries[0].url = link
+	let safeStatus = await axios.post(baseURL,requestBody)
+	if (JSON.stringify(safeStatus.data) !== '{}') {
+		let sendResponse = {}
+		sendResponse['statusCode'] = 400
+		sendResponse['message'] = 'unsafe project link'
+		res.status(400).json(sendResponse)
+		return		
+	}
+	const project = await pool.query(`SELECT * FROM ${databaseTableName} where name = ?`,[req.params.name])	
+	if (project[0][0]) {
+		await pool.query(`UPDATE ${databaseTableName} SET link = ? WHERE projectID = ${project[0][0].projectID}`, [link]);
+		let sendResponse = {}
+		sendResponse['statusCode'] = 200
+		sendResponse['message'] = "successfully updated existing project link"
+		res.status(200).json(sendResponse)		
+	} else {
+		let sendResponse = {}
+		sendResponse['statusCode'] = 400
+		sendResponse['message'] = "project with given name does not exist"
+		res.status(400).json(sendResponse)
+	}
+})
+
+app.delete('/projects/:name/link', async (req, res) => {
+	const project = await pool.query(`SELECT * FROM ${databaseTableName} where name = ?`,[req.params.name])
+	if (project[0][0]) {
+		await pool.query(`UPDATE ${databaseTableName} SET link = ? WHERE projectID = ${project[0][0].projectID}`, ['']);
+		let sendResponse = {}
+		sendResponse['statusCode'] = 200
+		sendResponse['message'] = "successfully deleted existing project's link"
+		res.status(200).json(sendResponse)				
+	}	else {
+		let sendResponse = {}
+		sendResponse['statusCode'] = 400
+		sendResponse['message'] = "project with given name does not exist"
+		res.status(200).json(sendResponse)			
+	}
 })
 
 

@@ -1,5 +1,11 @@
 # projects_Microservice
 
+#### GET /seed:
+Delete all entries in the database and initialize with initial (sample) entries
+
+#### GET /test:
+Test the connection
+
 #### GET /projects: 
 Get a list of all project names (not the details of each project)
 

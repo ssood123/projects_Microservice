@@ -4,6 +4,7 @@ import bodyParser from 'body-parser'
 import dotenv from 'dotenv'
 import cors from 'cors'
 import axios from 'axios'
+import AWS from 'aws-sdk'
 dotenv.config()
 const app = express()
 app.use(express.json())
@@ -67,7 +68,12 @@ app.get('/projects', async (req, res) => {
 	res.status(200).json(sendResponse)
 })
 
-app.post('/projects', async (req, res) => {
+const beforeIt = (req, res, next) => {
+	console.log("POST /projects has been called!")
+	next()
+}
+
+const postHandler = async (req, res, next) => {
 	const {name, description, unis, link} = req.body
 	requestBody.threatInfo.threatEntries[0].url = link
 	let safeStatus = await axios.post(baseURL,requestBody)
@@ -83,7 +89,35 @@ app.post('/projects', async (req, res) => {
 	sendResponse['statusCode'] = 201
 	sendResponse['message'] = "successfully created new project"
 	res.status(201).json(sendResponse)	
-})
+	next()
+}
+
+const afterIt = async (req, res) => {
+		// Set region
+		AWS.config.update({accessKeyId: process.env.ACCESS_KEY_ID, secretAccessKey: process.env.SECRET_ACCESS_KEY, region: process.env.REGION});
+
+		// Create publish parameters
+
+		let params = {
+		  Message: 'POST /projects called!', /* required */
+		  TopicArn: process.env.TOPICARN,
+		};
+
+		// Create promise and SNS service object
+		let publishTextPromise = new AWS.SNS().publish(params).promise();
+
+		// Handle promise's fulfilled/rejected states
+		publishTextPromise.then(
+		  function(data) {
+		    console.log(`Message ${params.Message} sent to the topic ${params.TopicArn}`);
+		    console.log("MessageID is " + data.MessageId);
+		  }).catch(
+		    function(err) {
+		    console.error(err, err.stack);
+  		});
+}
+
+app.post('/projects',beforeIt, postHandler, afterIt)
 
 app.get('/projects/:name', async (req, res) => {
 	const project = await pool.query(`SELECT * FROM ${databaseTableName} where name = ?`,[req.params.name])

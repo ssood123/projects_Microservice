@@ -55,8 +55,9 @@ app.get('/test', async (req, res) => {
 app.get('/projects', async (req, res) => {
 	const projects = await pool.query(`SELECT * FROM ${databaseTableName}`)
 	let filteredProjects = []
-	if (req.query.limit && req.query.offset) {
-		for (let i = parseInt(req.query.offset); i < parseInt(req.query.offset) + parseInt(req.query.limit); i++) {
+	if (req.query.limit) {
+		let offset = req.query.offset ? parseInt(req.query.offset) : 0
+		for (let i = offset; i < offset + parseInt(req.query.limit); i++) {
 			filteredProjects.push(projects[0][i].name)
 		}
 	} else {
@@ -184,9 +185,10 @@ app.get('/projects/:name/members', async (req, res) => {
 		let sendResponse = {}
 		sendResponse['statusCode'] = 200
 		let filteredMembers = []
-		if (req.query.limit && req.query.offset) {
+		if (req.query.limit) {
+			let offset = req.query.offset ? parseInt(req.query.offset) : 0
 			let tempMembers = project[0][0].members.split(', ')
-			for (let i = parseInt(req.query.offset); i < parseInt(req.query.offset) + parseInt(req.query.limit); i++) {
+			for (let i = offset; i < offset + parseInt(req.query.limit); i++) {
 				filteredMembers.push(tempMembers[i])
 			}
 			filteredMembers = filteredMembers.join(', ')

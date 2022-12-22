@@ -55,8 +55,14 @@ app.get('/test', async (req, res) => {
 app.get('/projects', async (req, res) => {
 	const projects = await pool.query(`SELECT * FROM ${databaseTableName}`)
 	let filteredProjects = []
-	for (let i = 0; i < projects[0].length; i++) {
-		filteredProjects.push(projects[0][i].name)
+	if (req.query.limit && req.query.offset) {
+		for (let i = parseInt(req.query.offset); i < parseInt(req.query.offset) + parseInt(req.query.limit); i++) {
+			filteredProjects.push(projects[0][i].name)
+		}
+	} else {
+		for (let i = 0; i < projects[0].length; i++) {
+			filteredProjects.push(projects[0][i].name)
+		}
 	}
 	let sendResponse = {}
 	sendResponse['statusCode'] = 200
@@ -177,7 +183,17 @@ app.get('/projects/:name/members', async (req, res) => {
 	if (project[0][0]) {
 		let sendResponse = {}
 		sendResponse['statusCode'] = 200
-		sendResponse['data'] = project[0][0].members
+		let filteredMembers = []
+		if (req.query.limit && req.query.offset) {
+			let tempMembers = project[0][0].members.split(', ')
+			for (let i = parseInt(req.query.offset); i < parseInt(req.query.offset) + parseInt(req.query.limit); i++) {
+				filteredMembers.push(tempMembers[i])
+			}
+			filteredMembers = filteredMembers.join(', ')
+		} else {
+			filteredMembers = project[0][0].members
+		}
+		sendResponse['data'] = filteredMembers
 		let HATEOASlinks = []
 		HATEOASlinks.push({"href": `/projects/${req.params.name}/members`, "rel" : "self", "type" : "GET"})
 		HATEOASlinks.push({"href": `/projects/${req.params.name}`, "rel" : "description", "type": "GET"})
